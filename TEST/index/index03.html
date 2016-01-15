@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Painting</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body{
+            margin: 0px;
+            overflow: hidden;
+            display: block;
+        }
+    </style>
+</head>
+<body style="margin: 0, overflow=hidden;">
+
+    <script src="js/jquery-2.1.4.min.js"></script>
+    <script src="js/three.min.js"></script>
+
+    <script>
+
+        // Set up the scene, camera, and renderer as global variables.
+        var scene, camera, renderer, container, raycaster, mouse, lineWidth;
+        var blocksize = 1;
+        var hblocksize = blocksize/2;
+        var bwidth = Math.round(window.innerWidth/blocksize);
+        var bheight = Math.round(window.innerHeight/blocksize);
+        var objects = createArray3(bwidth, bheight, 50);
+        var height = createArray2(bwidth, bheight);
+        var blockColour = 0xff0000;
+        //var thisPass = [];
+        var drawing = false;
+        var drawLine = true;
+        var lastDrawn = new THREE.Vector2();
+        var geometry = new THREE.CubeGeometry(blocksize, blocksize, blocksize);                   
+        var material = new THREE.MeshLambertMaterial({color: blockColour });
+
+        init();
+        initTouchMoveCanvas();
+        animate();
+            
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        function onWindowResize(){
+            camera.aspect = window.innerWidth / window.innerHeight;   // Have to change bwidth and bheight ?
+            camera.updateProjectionMatrix();
+
+            renderer.setSize( window.innerWidth, window.innerHeight );
+        }
+        
+        function initTouchMoveCanvas() {
+
+          document.addEventListener("touchmove", TouchMove, false);
+          document.addEventListener("touchend", EndTouchMove, false);
+          document.addEventListener("touchstart", BeginTouch, false);
+        }
+
+        // Sets up the scene.
+        function init() {
+
+            // Create the scene and set the scene size.
+            scene = new THREE.Scene();
+            var WIDTH = window.innerWidth,
+              HEIGHT = window.innerHeight;
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Create a renderer and add it to the DOM.
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(WIDTH, HEIGHT);
+            document.body.appendChild(renderer.domElement);
+
+            // Create a camera, zoom it out from the model a bit, and add it to the scene.
+            camera = new THREE.OrthographicCamera(WIDTH/-2, WIDTH/2, HEIGHT/2, HEIGHT/-2, 10, 51);
+            camera.position.set(WIDTH/2,HEIGHT/2,50);
+            camera.lookAt(new THREE.Vector3(WIDTH/2,HEIGHT/2,0));
+            scene.add(camera);
+
+            // Create a light, set its position, and add it to the scene.
+            var dLight = new THREE.DirectionalLight(0xFFFFFF,1);                             // Need to do something with the light for shadows
+            dLight.position.set(-10,30,100);
+            //dLight.castShadow = true;
+            scene.add(dLight);
+            console.log('lights added');
+            var planematerial = new THREE.MeshLambertMaterial( { map: THREE.ImageUtils.loadTexture('models/papertexture.png')});
+            var planeGeometry = new THREE.PlaneGeometry(WIDTH,HEIGHT,1,1);
+            var plane = new THREE.Mesh(planeGeometry,planematerial);
+            plane.position.set(WIDTH/2, HEIGHT/2, 0);
+            //plane.receiveShadow = true;
+            scene.add(plane);
+            console.log('scene added', scene.position.x, scene.position.y);
+
+        }
+
+        function BeginTouch(event) {
+            event.preventDefault();
+            drawing = true;
+            var x,y,z;
+            var v = alignPosition(event.touches[0].clientX, event.touches[0].clientY);
+            x = (v.x / window.innerWidth) * 2 - 1;
+            y = (v.y / window.innerHeight) * 2 - 1;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;
+            DrawCube(x,y,z,true);
+            renderer.render(scene, camera);
+        }    
+
+        function TouchMove(event) {
+            event.preventDefault();
+            var x,y,z;
+            var v = alignPosition(event.touches[0].clientX, event.touches[0].clientY);
+            x = (v.x / window.innerWidth) * 2 - 1;
+            y = (v.y / window.innerHeight) * 2 - 1;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;
+            if (drawLine && (! isNaN(lastDrawn.x)) && (! isNaN(lastDrawn.y != 0))) {
+                var px = (x + 1) * window.innerWidth / 2;
+                var py = -(y - 1) * window.innerHeight / 2;
+                DrawLine(lastDrawn.x, lastDrawn.y, px, py);
+                //console.log('DrawLine called', lastDrawn.x, lastDrawn.y, ' to ', px, py);
+            }
+            DrawCube(x,y,z,true);
+            //console.log('DrawCube called at ',x,y,z);
+        }
+
+        function EndTouchMove(event){
+            if (drawLine)
+                lastDrawn = new THREE.Vector2();
+            drawing = false;
+        }
+
+        // For values of x and y from -1 to 1
+        function DrawCube(cx,cy,cz,setLastDrawn) {
+            var x = Math.round((cx + 1) * window.innerWidth / 2);
+            var y = Math.round(-(cy - 1) * window.innerHeight / 2);
+            var cube = new THREE.Mesh(geometry,material);
+            cube.position.set(x,y,cz);
+            scene.add(cube);
+        //console.log('dc',x,y);
+            renderer.render(scene, camera);       
+            objects.set(x,y,height.get(x,y), cube);
+            height.set(x,y, height.get(x,y) + 1);
+            if(drawLine && setLastDrawn)
+                lastDrawn.set(x, y);
+        }
+    
+        // For values of x and y between 0 and the dimension of the renderer. (0,0) is bottom left
+        function DrawCubePixCoord(x,y,setLastDrawn) {
+            var z;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;
+           // if (thisPass.indexOf(new THREE.Vector2(cx, cy)) == -1) {
+                var cube = new THREE.Mesh(geometry,material);
+                cube.position.set(x,y,z);
+                scene.add(cube);
+            //console.log('dcpc',x,y);
+                renderer.render(scene, camera);       
+                objects.set(x,y,height.get(x,y), cube);
+                height.set(x,y, height.get(x,y) + 1);
+                if(drawLine && setLastDrawn)
+                    lastDrawn.set(x, y);
+                //console.log('LastDrawn at ', lastDrawn);
+        }
+        
+        // Bresenham's algorithm, modified to use the brush footprint     
+        function DrawLine(ax, ay, bx, by) {
+            if (ax == bx && ay == by)
+                return;
+            var i, m, x, y;
+            var pos = new THREE.Vector3();
+            if (bx < ax) {
+                var temp = bx;
+                bx = ax;
+                ax = temp;
+                temp = by;
+                by = ay;
+                ay = temp;
+            }
+            //bs = blocksize/windo
+            x = ax;
+            y = ay;
+            mx = blocksize*(bx - ax)/(by -  ay);
+            my = blocksize*(by - ay)/(bx - ax);
+            if (ax <= bx && ay <= by && Math.abs(bx-ax)>=Math.abs(by-ay)) { //1st Quadrant
+                for (i = blocksize; i < Math.abs(bx-ax); i+=blocksize) {
+                    x+=blocksize;
+                    y+=my;
+                    DrawCubePixCoord(x, RoundToBlockSize(y), false);
+                    //console.log('1st quadrant : DrawCube at ',x,Math.round(y));
+                }
+            }
+            else if (ax <= bx && ay <= by && Math.abs(bx-ax)< Math.abs(by-ay)) { //2nd Quadrant
+                for (i = blocksize; i < Math.abs(by-ay); i+=blocksize) {
+                    x+=mx;
+                    y+=blocksize;
+                    DrawCubePixCoord(RoundToBlockSize(x), y, false);
+                    //console.log('2nd quadrant : DrawCube at ',Math.round(x),y);
+                }
+            }        
+            else if (ax <= bx && ay > by && Math.abs(bx-ax)<= Math.abs(ay-by)) { //7th Quadrant
+                for (i = blocksize; i < Math.abs(ay-by); i+=blocksize) {
+                    x-=mx;
+                    y-=blocksize;
+                    DrawCubePixCoord(RoundToBlockSize(x), y, false);
+                    //console.log('7th quadrant : DrawCube at ',Math.round(x),y);
+                }
+            } 
+            else if (ax <= bx && ay > by && Math.abs(bx-ax)>=Math.abs(ay-by)) { //8th Quadrant - same as 1st quadrant ?
+                for (i = blocksize; i < Math.abs(bx-ax); i+=blocksize) {
+                    x+=blocksize;
+                    y+=my;
+                    DrawCubePixCoord(x, RoundToBlockSize(y), false);
+                    //console.log('8th quadrant : DrawCube at ',x, Math.round(y));
+                }
+            }
+        }
+        
+        function createArray3(d1,d2,d3) {
+          var data = [d1*d2*d3];
+          function get(x,y,z) { return data[x*d1*d2 + y*d1 + z];}
+          function set(x,y,z,v) { data[x*d1*d2 + y*d1 + z] = v;}
+          return {'get':get, 'set':set};
+        }
+
+        function createArray2(d1,d2) {
+          var data = [d1*d2];
+          function get(x,y) { return data[x*d1 + y];}
+          function set(x,y,v) { data[x*d1 + y] = v;}
+          return {'get':get, 'set':set};
+        }
+        
+        function alignPosition(x,y) {
+            var point = new THREE.Vector2(x,y);
+            point.divideScalar(blocksize).floor().multiplyScalar(blocksize).addScalar(hblocksize);
+            return point;
+        }
+        
+        function RoundToBlockSize(n) {
+            var r = n%blocksize;
+            return n - r + hblocksize;
+
+        }
+
+        // Renders the scene and updates the render as needed.
+        function animate() {
+
+          // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+            requestAnimationFrame(animate);
+
+          // Render the scene.
+            renderer.render(scene, camera);
+        }
+
+
+    </script>
+    <div>
+    </div>
+
+</body>
+</html>

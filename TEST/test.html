@@ -1,0 +1,54 @@
+<html> 
+  <head> 
+    <title>Basic Drawing App</title> 
+    <style>
+      canvas { 
+        width: 100%; 
+        height: 100%; 
+      }
+    </style> 
+  </head> 
+  <body> 
+    <script src="Packages/three.min.js"></script> 
+    <script> 
+        var scene = new THREE.Scene(),
+            camera = new THREE.OrthographicCamera( 10.8 / - 2, 10.8 / 2, 19.2 / 2, 19.2 / - 2, -1, 1 );
+            renderer = new THREE.WebGLRenderer();  
+        camera.position.x = 0;
+        camera.position.y = 0;
+        camera.position.z = 30;
+        camera.lookAt(new THREE.Vector3(0,0,0));
+        scene.add(camera);
+
+        renderer.setSize(window.innerWidth, window.innerHeight); 
+        document.body.appendChild(renderer.domElement); 
+        
+        var pointLight = new THREE.PointLight(0xFFFFFF);
+        pointLight.position.x = -25;
+        pointLight.position.y = 25;
+        pointLight.position.z = 40;
+        scene.add(pointLight);
+        
+        var planeGeometry = new THREE.PlaneGeometry(108,192,1,1);
+        var planeMaterial = new THREE.MeshLambertMaterial({color: 0xfefefe});
+        var plane = new THREE.Mesh(planeGeometry,planeMaterial);
+        scene.add(plane);
+        
+      var cube = new THREE.Mesh(
+                new THREE.CubeGeometry(2,2,2),
+                new THREE.MeshLambertMaterial({color: Math.random() * 0xffffff }
+            )); 
+      cube.castShadow=true;
+
+      scene.add(cube); 
+
+      var render = function () { 
+        requestAnimationFrame(render); 
+        cube.rotation.x += 0.01; 
+        cube.rotation.y += 0.01; 
+        renderer.render(scene, camera); 
+      }; 
+      render(); 
+    </script> 
+  </body> 
+</html>

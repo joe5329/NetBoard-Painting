@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Painting</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body{
+            margin: 0px;
+            overflow: hidden;
+            display: block;
+        }
+    </style>
+</head>
+<body style="margin: 0, overflow=hidden;">
+
+    <script src="js/jquery-2.1.4.min.js"></script>
+    <script src="js/three.min.js"></script>
+
+    <script>
+
+        // Set up the scene, camera, and renderer as global variables.
+        var scene, camera, renderer, container, raycaster, mouse, lineWidth;
+        var blocksize = 5;
+        var hblocksize = blocksize/2;
+        var bwidth = Math.round(window.innerWidth/blocksize);
+        var bheight = Math.round(window.innerHeight/blocksize);
+        var objects = createArray3(bwidth, bheight, 50);
+        var height = createArray2(bwidth, bheight);
+        var blockColour = 0xff0000;
+        //var thisPass = [];
+        var drawing = false;
+        var lastDrawn = new THREE.Vector2();
+
+        init();
+        initTouchMoveCanvas();
+        animate();
+            
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        function onWindowResize(){
+            camera.aspect = window.innerWidth / window.innerHeight;   // Have to change bwidth and bheight ?
+            camera.updateProjectionMatrix();
+
+            renderer.setSize( window.innerWidth, window.innerHeight );
+        }
+        
+        function initTouchMoveCanvas() {
+
+          document.addEventListener("touchmove", TouchMove, false);
+          document.addEventListener("touchend", EndTouchMove, false);
+          document.addEventListener("touchstart", BeginTouch, false);
+        }
+
+        // Sets up the scene.
+        function init() {
+
+            // Create the scene and set the scene size.
+            scene = new THREE.Scene();
+            var WIDTH = window.innerWidth,
+              HEIGHT = window.innerHeight;
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Create a renderer and add it to the DOM.
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(WIDTH, HEIGHT);
+            document.body.appendChild(renderer.domElement);
+
+            // Create a camera, zoom it out from the model a bit, and add it to the scene.
+            camera = new THREE.OrthographicCamera(WIDTH/-2, WIDTH/2, HEIGHT/2, HEIGHT/-2, 10, 51);
+            camera.position.set(WIDTH/2,HEIGHT/2,50);
+            camera.lookAt(new THREE.Vector3(WIDTH/2,HEIGHT/2,0));
+            scene.add(camera);
+
+            // Create a light, set its position, and add it to the scene.
+            var dLight = new THREE.DirectionalLight(0xFFFFFF,1);                             // Need to do something with the light for shadows
+            dLight.position.set(-10,30,100);
+            //dLight.castShadow = true;
+            scene.add(dLight);
+            console.log('lights added');
+            var material = new THREE.MeshLambertMaterial( { map: THREE.ImageUtils.loadTexture('models/papertexture.png')});
+            var planeGeometry = new THREE.PlaneGeometry(WIDTH,HEIGHT,1,1);
+            var plane = new THREE.Mesh(planeGeometry,material);
+            plane.position.set(WIDTH/2, HEIGHT/2, 0);
+            //plane.receiveShadow = true;
+            scene.add(plane);
+            console.log('scene added', scene.position.x, scene.position.y);
+
+        }
+
+        function BeginTouch(event) {
+            event.preventDefault();
+            drawing = true;
+            var x,y,z;
+            var v = alignPosition(event.touches[0].clientX, event.touches[0].clientY);
+            x = (v.x / window.innerWidth) * 2 - 1;
+            y = -(v.y / window.innerHeight) * 2 + 1;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;            /* mouse.set(x,y);
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(objects, false);
+            if (intersects.length > 0) {
+                var intersected = intersects[0];
+                var cube = new THREE.Mesh(
+                        new THREE.CubeGeometry(blocksize, blocksize, blocksize),
+                        new THREE.MeshLambertMaterial({color: 0xff0000 }
+                ));
+                cube.position.copy(intersected.point);
+                cube.position.divideScalar(blocksize).floor().multiplyScalar(blocksize).addScalar(hblocksize);*/
+                DrawCube(x,y,z,true);
+                renderer.render(scene, camera);
+
+            //}
+        }    
+
+        function TouchMove(event) {
+            event.preventDefault();
+            var x,y,z;
+            var v = alignPosition(event.touches[0].clientX, event.touches[0].clientY);
+            x = (v.x / window.innerWidth) * 2 - 1;
+            y = -(v.y / window.innerHeight) * 2 + 1;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;
+            /*  mouse.set(x,y);
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(objects, false);
+            if (intersects.length > 0) {
+                var intersected = intersects[0];
+                var point = new THREE.Vector3();
+                point.copy(intersected.point);
+                point.divideScalar(blocksize).floor().multiplyScalar(blocksize).addScalar(hblocksize); */
+                if ((! isNaN(lastDrawn.x)) && (! isNaN(lastDrawn.y != 0))) {
+                    DrawLine(lastDrawn.x, lastDrawn.y, x, y);
+                    console.log('DrawLine called');
+                }
+                DrawCube(x,y,z,true);
+                console.log('DrawCube called at ',x,y,z);
+            /*}
+            else { console.log('nothing intersected', x, y);}*/
+
+        }
+
+        function EndTouchMove(event){
+            //thisPass = [];
+            lastDrawn = new THREE.Vector2();
+            drawing = false;
+        }
+
+        // For values of x and y from -1 to 1
+        function DrawCube(cx,cy,cz,setLastDrawn) {
+          //  if (thisPass.indexOf(new THREE.Vector2(x, y)) == -1) {
+                var x = (cx + 1) * window.innerWidth / 2;
+                var y = -(cy - 1) * window.innerHeight / 2;
+                var cube = new THREE.Mesh(
+                        new THREE.CubeGeometry(blocksize, blocksize, blocksize),
+                        new THREE.MeshLambertMaterial({color: blockColour }
+                ));
+                cube.position.set(x,y,cz);
+                scene.add(cube);
+                renderer.render(scene, camera);       
+                objects.set(x,y,height.get(x,y), cube);
+                height.set(x,y, height.get(x,y) + 1);
+                if(setLastDrawn)
+                    lastDrawn.set(x, y);
+                //thisPass.push(new THREE.Vector2(cube.position[0], cube.position[1]));
+                console.log('LastDrawn at ', lastDrawn);
+          /*  } else console.log ('already drawn this pass'); */
+        }
+    
+        // For values of x and y between 0 and the dimension of the renderer. (0,0) is bottom left
+        function DrawCubePixCoord(x,y,setLastDrawn) {
+            var z;
+            //var cx = 2*x / window.innerWidth - 1;
+            //var cy = 2*y / window.innerHeight - 1;
+            if (isNaN(height.get(x,y)))
+                z = hblocksize;
+            else
+                z = (height.get(x,y) * blocksize) + hblocksize;
+           // if (thisPass.indexOf(new THREE.Vector2(cx, cy)) == -1) {
+                var cube = new THREE.Mesh(
+                        new THREE.CubeGeometry(blocksize, blocksize, blocksize),
+                        new THREE.MeshLambertMaterial({color: blockColour }
+                ));
+                cube.position.set(x,y,z);
+                scene.add(cube);
+                renderer.render(scene, camera);       
+                objects.set(x,y,height.get(x,y), cube);
+                height.set(x,y, height.get(x,y) + 1);
+                if(setLastDrawn)
+                    lastDrawn.set(x, y);
+               // thisPass.push(new THREE.Vector2(cube.position[0], cube.position[1]));
+                console.log('LastDrawn at ', lastDrawn);
+           // } else console.log ('already drawn this pass');
+        }
+        
+      /*  function GetPixCoord(x,y) {
+            mouse.set(x,y);
+            raycaster.setFromCamera(mouse, camera);
+            var intersects = raycaster.intersectObjects(objects, false);
+            if (intersects.length > 0) {
+                var intersected = intersects[0];
+                return intersected.point;
+            }
+            else { 
+                console.log('nothing intersected', x, y);
+                return new THREE.Vector3();
+            }
+
+        } */
+        
+                // Bresenham's algorithm, modified to use the brush footprint     
+        function DrawLine(ax, ay, bx, by) {
+            var i, m, x, y;
+            var pos = new THREE.Vector3();
+            if (bx < ax) {
+                var temp = bx;
+                bx = ax;
+                ax = temp;
+                temp = by;
+                by = ay;
+                ay = temp;
+            }
+            //bs = blocksize/windo
+            x = ax;
+            y = ay;
+            mx = blocksize*(bx - ax)/(by -  ay);
+            my = blocksize*(by - ay)/(bx - ax);
+            if (ax <= bx && ay <= by && Math.abs(bx-ax)>=Math.abs(by-ay)) { //1st Quadrant
+                for (i = blocksize; i < Math.abs(bx-ax); i+=blocksize) {
+                    x+=blocksize;
+                    y+=my;
+                   // pos = GetPixCoord((2*x/(window.innerWidth)-1), (2*Math.round(y)/window.innerHeight)-1);
+                    DrawCubePixCoord(x, Math.round(y), false);
+                    console.log('1st quadrant : DrawCube at ',x,Math.round(y));
+                }
+            }
+            else if (ax <= bx && ay <= by && Math.abs(bx-ax)< Math.abs(by-ay)) { //2nd Quadrant
+                for (i = blocksize; i < Math.abs(by-ay); i+=blocksize) {
+                    x+=mx;
+                    y+=blocksize;
+                   // pos = GetPixCoord((2*Math.round(x)/(window.innerWidth)-1),(2*y/window.innerHeight)-1);
+                    DrawCubePixCoord(Math.round(x), y, false);
+                    console.log('2nd quadrant : DrawCube at ',Math.round(x),y);
+                }
+            }        
+            else if (ax <= bx && ay > by && Math.abs(bx-ax)<= Math.abs(ay-by)) { //7th Quadrant
+                for (i = blocksize; i < Math.abs(ay-by); i+=blocksize) {
+                    x-=mx;
+                    y-=blocksize;
+                   // pos = GetPixCoord((2*Math.round(x)/(window.innerWidth)-1),(2*y/window.innerHeight)-1);
+                    DrawCubePixCoord(Math.round(x), y, false);
+                    console.log('7th quadrant : DrawCube at ',Math.round(x),y);
+                }
+            } 
+            else if (ax <= bx && ay > by && Math.abs(bx-ax)>=Math.abs(ay-by)) { //8th Quadrant - same as 1st quadrant ?
+                for (i = blocksize; i < Math.abs(bx-ax); i+=blocksize) {
+                    x+=blocksize;
+                    y+=my;
+                   // pos = GetPixCoord((2*x/(window.innerWidth)-1), (2*Math.round(y)/window.innerHeight)-1);
+                    DrawCubePixCoord(x, Math.round(y), false);
+                    console.log('8th quadrant : DrawCube at ',x, Math.round(y));
+                }
+            }
+        }
+        
+        function createArray3(d1,d2,d3) {
+          var data = [d1*d2*d3];
+          function get(x,y,z) { return data[x*d1*d2 + y*d1 + z];}
+          function set(x,y,z,v) { data[x*d1*d2 + y*d1 + z] = v;}
+          return {'get':get, 'set':set};
+        }
+
+        function createArray2(d1,d2) {
+          var data = [d1*d2];
+          function get(x,y) { return data[x*d1 + y];}
+          function set(x,y,v) { data[x*d1 + y] = v;}
+          return {'get':get, 'set':set};
+        }
+        
+        function alignPosition(x,y) {
+            var point = new THREE.Vector2(x,y);
+            point.divideScalar(blocksize).floor().multiplyScalar(blocksize).addScalar(hblocksize);
+            return point;
+        }
+
+        // Renders the scene and updates the render as needed.
+        function animate() {
+
+          // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+          requestAnimationFrame(animate);
+
+          // Render the scene.
+            renderer.render(scene, camera);
+        }
+
+
+    </script>
+    <div>
+    </div>
+
+</body>
+</html>

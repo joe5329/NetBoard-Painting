@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>HTML5 Touch Tracing </title>
+      
+      <script type="text/javascript">
+         var touchmovezone;
+        var touchmovectx;
+        var lastPt=null;
+
+        function initTouchMoveCanvas() {
+          touchmovelink = document.getElementById("touchmovelink");
+          touchmovezone = document.getElementById("touchmovezone");
+          touchmovelink.style.display = 'none';
+          touchmovezone.style.display = 'block';
+
+          touchmovezone.addEventListener("touchmove", drawtouchmove, false);
+          touchmovezone.addEventListener("touchend", endtouchmove, false);
+
+          touchmovezone.addEventListener("mousedown", function() {
+            touchmovezone.addEventListener("mousemove", drawmousemove, false);
+          }
+          , false);
+          touchmovezone.addEventListener("mouseup", endmousemove, false);
+          touchmovectx = touchmovezone.getContext("2d");
+
+        }
+           function getOffset(obj) {
+                var offsetLeft = 0;
+                var offsetTop = 0;
+                do {
+                  if (!isNaN(obj.offsetLeft)) {
+                      offsetLeft += obj.offsetLeft;
+                  }
+                  if (!isNaN(obj.offsetTop)) {
+                      offsetTop += obj.offsetTop;
+                  }   
+                } while(obj = obj.offsetParent );
+                return {left: offsetLeft, top: offsetTop};
+            }  
+
+
+          function drawtouchmove(e) {
+            e.preventDefault();
+            var offset  = getOffset(touchmovezone);
+              if(lastPt!=null) {
+                touchmovectx.beginPath();
+                touchmovectx.moveTo(lastPt.x-offset.left, lastPt.y-offset.top);
+                touchmovectx.lineTo(e.touches[0].pageX-offset.left, e.touches[0].pageY-offset.top);
+            touchmovectx.strokeStyle = 'purple';
+            touchmovectx.lineWidth = 3;
+                touchmovectx.stroke();
+              }
+              lastPt = {x:e.touches[0].pageX, y:e.touches[0].pageY};
+          }
+
+
+          function drawmousemove(e) {
+
+            e.preventDefault();
+            var offset  = getOffset(touchmovezone);
+              if(lastPt!=null) {
+                touchmovectx.beginPath();
+                touchmovectx.moveTo(lastPt.x-offset.left, lastPt.y-offset.top);
+                touchmovectx.lineTo(e.pageX-offset.left, e.pageY-offset.top);
+            touchmovectx.strokeStyle = 'purple';
+            touchmovectx.lineWidth = 3;
+                touchmovectx.stroke();
+              }
+              lastPt = {x:e.pageX, y:e.pageY};
+          }  
+
+          function endtouchmove(e) {
+            e.preventDefault();
+            lastPt = null;
+          }  
+
+          function endmousemove(e) {
+            e.preventDefault();
+          touchmovezone.removeEventListener("mousemove", drawmousemove, false); 
+            lastPt = null;
+          }    
+  
+        </script>
+  </head>
+    <body>
+       
+
+<canvas id="touchmovezone" width="662" height="373" style="border: 1px solid #ccc;display: none">
+Canvas element not supported<br />
+</canvas>
+  </body>
+</html>
