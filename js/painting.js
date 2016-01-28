@@ -34,30 +34,33 @@ Bristle.prototype = {
         this.points[0].x = x;
         this.points[0].y = y;
         
-        var directionUp = 0; // 0 means no percievable vertical direction, 1 means up , 2 means down
-        
-        if (y > this.points[0].y)
-            directionUp = 1;
-        else if (y < this.points[0].y)
-            directionUp = 2;
-        
-        while (changes && directionUp != 0){
-            changes = false;
-            for (var j = this.nPoints-1; j>0; j--){
-                if (this.points[j].y == this.points[j-1].y){
-                    if (directionUp == 1){
-                        this.points[j].y--;
-                    }
-                    else if (directionUp == 2)
-                        this.points[j].y++;
-                }
+
+        for (var i = 0; i < this.nPoints-1; i++){
+
+            var diff = this.points[i].y - this.points[i+1].y ;
+            if(diff > 1){
+                this.points[i+1].y = this.points[i].y+1; 
             }
+            else if (diff < -1){
+                this.points[i+1].y = this.points[i].y-1;
+            }                
         }
-                
+        
+        for (var i = 0; i < this.nPoints-1; i++){
+
+            var diff = this.points[i].x - this.points[i+1].x ;
+            if(diff > 3){
+                this.points[i+1].x = this.points[i].x+3; 
+            }
+            else if (diff < -3){
+                this.points[i+1].x = this.points[i].x-3;
+            }                
+        }
+                                
         for(var i = 1; i<this.nPoints; i++){
             tempPointA = this.points[i];
-            this.points[i].x = (this.points[i].x + this.points[i-1].x + (2*tempPointB.x))/4;
-            this.points[i].y = (this.points[i].y + this.points[i-1].y + (2*tempPointB.y))/4;
+            this.points[i].x = Math.round((this.points[i].x + this.points[i-1].x + (2*tempPointB.x))/4);
+            this.points[i].y = Math.round((this.points[i].y + this.points[i-1].y + (2*tempPointB.y))/4);
             tempPointB=tempPointA;
         }
     },
@@ -124,11 +127,10 @@ function initialisePainting() {
         };*/
     }
     
-    gui.addColor(options, 'colour').onFinishChange(function(){
+    gui.addColor(options, 'colour').onChange(function(){
         setRGB();
         brush.setColour("rgb("+pR+","+pG+","+pB+")");
         setPickup();
-        console.log('colour changes');
     });
     gui.add(options, 'nBristles', 1, 50).onFinishChange(function(value){
         brush = new Brush(value, options.nPoints);
@@ -172,7 +174,7 @@ function TouchMove(event) {
         firstMove = false;
     }
         
-    paintPickup(v.x,v.y);
+    paintPickup(v.x,v.y, false);
     
     //if (drawLine && lastDrawn.x != undefined && lastDrawn.y != undefined) {
     if (drawLine) {
@@ -196,61 +198,108 @@ function EndTouchMove(event){
 
 // Bresenham's algorithm, modified to use the brush footprint     
 function DrawLine(ax, ay, bx, by) {
-    if (ax == bx && ay == by)
+    if (ax == bx && ay == by){
+        console.log('useless drawLine');
         return;
+    }
+    console.log('drawLine called',ax,ay,bx,by);
     var i, m, x, y, rounded;
-    if (bx < ax) {
+   /* if (bx < ax) {
         var temp = bx;
         bx = ax;
         ax = temp;
         temp = by;
         by = ay;
         ay = temp;
-    }
-    //bs = blocksize/windo
+    }*/
     x = ax;
     y = ay;
-    mx = 1*(bx - ax)/(by -  ay);
-    my = 1*(by - ay)/(bx - ax);
-    if (ay <= by && Math.abs(bx-ax)>=Math.abs(by-ay)) { //1st Quadrant
-        for (i = 1; i < Math.abs(bx-ax); i+=1) {
-            x+=1;
+    if (bx != ax){
+        mx = Math.abs((bx - ax)/(by -  ay));
+        my = Math.abs((by - ay)/(bx - ax));
+    }
+    else {
+        mx = 0;
+        my = null;
+    }
+    
+    if (ax <= bx && ay <= by && Math.abs(bx-ax)>=Math.abs(by-ay)) { //1st Quadrant
+        for (i = 1; i < Math.abs(bx-ax); i++) {
+            x++;
             y+=my;
             rounded = RoundToUnit(y);
-            paintPickup(x,rounded);
+            paintPickup(x,rounded, false);
         }
+        console.log('1st q', bx-ax);
     }
-    else if (ay <= by && Math.abs(bx-ax)< Math.abs(by-ay)) { //2nd Quadrant
-        for (i = 1; i < Math.abs(by-ay); i+=1) {
+    else if (ax <= bx && ay <= by && Math.abs(bx-ax)< Math.abs(by-ay)) { //2nd Quadrant
+        for (i = 1; i < Math.abs(by-ay); i++) {
             x+=mx;
-            y+=1;
+            y++;
             rounded = RoundToUnit(x);
-            paintPickup(rounded,y);
+            paintPickup(rounded,y, false);
         }
+        console.log('2nd q', by-ay);
     }        
-    else if (ay > by && Math.abs(bx-ax)<= Math.abs(ay-by)) { //7th Quadrant
-        for (i = 1; i < Math.abs(ay-by); i+=1) {
+    else if (ax > bx && ay < by && Math.abs(bx-ax)<= Math.abs(ay-by)) { //3rd Quadrant
+        for (i = 1; i < Math.abs(ay-by); i++) {
             x-=mx;
-            y-=1;
+            y++;
             rounded = RoundToUnit(x);
-            paintPickup(rounded,y);
+            paintPickup(rounded,y, false);
         }
+        console.log('3rd q', by-ay);
     } 
-    else if (ay > by && Math.abs(bx-ax)>=Math.abs(ay-by)) { //8th Quadrant - same as 1st quadrant ?
-        for (i = 1; i < Math.abs(bx-ax); i+=1) {
-            x+=1;
+    else if (ax > bx && ay < by && Math.abs(bx-ax)>Math.abs(ay-by)) { //4th Quadrant
+        for (i = 1; i < Math.abs(bx-ax); i++) {
+            x--;
             y+=my;
             rounded = RoundToUnit(y);
-            paintPickup(x,rounded);
+            paintPickup(x,rounded, false);
         }
+        console.log('4th q', bx-ax);
     }
+    else if (ax > bx && ay >= by && Math.abs(bx-ax)>=Math.abs(by-ay)) { //5th Quadrant
+        for (i = 1; i < Math.abs(bx-ax); i++) {
+            x--;
+            y-=my;
+            rounded = RoundToUnit(y);
+            paintPickup(x,rounded, false);
+        }
+        console.log('5th q', bx-ax);
+    }
+    else if (ax > bx && ay >= by && Math.abs(bx-ax)<= Math.abs(by-ay)) { //6th Quadrant
+        for (i = 1; i < Math.abs(by-ay); i++) {
+            x-=mx;
+            y--;
+            rounded = RoundToUnit(x);
+            paintPickup(rounded,y, false);
+        }
+        console.log('6th q', by-ay);
+    } 
+    else if (ax <= bx && ay > by && Math.abs(bx-ax)< Math.abs(ay-by)) { //7th Quadrant
+        for (i = 1; i < Math.abs(ay-by); i++) {
+            x+=mx;
+            y--;
+            rounded = RoundToUnit(x);
+            paintPickup(rounded,y, false);
+        }
+        console.log('7th', by-ay);
+    } 
+    else if (ax <= bx && ay > by && Math.abs(bx-ax)>=Math.abs(ay-by)) { //8th Quadrant
+        for (i = 1; i < Math.abs(bx-ax); i++) {
+            x++;
+            y-=my;
+            rounded = RoundToUnit(y);
+            paintPickup(x,rounded, false);
+        }
+        console.log('8th q', bx-ax);
+    }       
 }
 
 function setPickup() {
     pickupctx.fillStyle = "rgb("+pR+","+pG+","+pB+")";
     context.fillStyle = "rgb("+pR+","+pG+","+pB+")";
-    console.log(context.fillStyle);
-    console.log("rgb("+pR+","+pG+","+pB+")");
     pickupctx.clearRect(0, 0, pickup.width, pickup.height);
     pickupctx.fillRect(0, 0, pickup.width, pickup.height);
 }
@@ -259,7 +308,6 @@ function setRGB() {
     pR = Math.floor(options.colour/65536);
     pG = Math.floor((options.colour-(pR*65536)) / 256);
     pB = (options.colour - (pR*65536) - (pG*256));
-    console.log(pR, pG, pB);
 }
 
 function paintPoint(x,y) {
@@ -271,13 +319,14 @@ function paintPoint(x,y) {
     lastDrawn.y = y;
 }
     
-function paintPickup(x,y) {
-
+function paintPickup(x,y, setLastDrawn) {
     brush.paint();
     brush.moveBrush(x,y);
     
-    lastDrawn.x = x;
-    lastDrawn.y = y;
+    if (setLastDrawn){
+        lastDrawn.x = x;
+        lastDrawn.y = y;
+    }
 }
     
 function generatePoints(n, c) {
