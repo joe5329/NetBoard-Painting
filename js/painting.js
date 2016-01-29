@@ -74,11 +74,13 @@ Bristle.prototype = {
             tempPointB=tempPointA;
         }
     },
-    
-    paint: function(){
-        var pickup = context.getImageData(this.points[0].x-50, this.points[0].y-50,100,100);
+
+    paint: function(doPickup){
         for(var i = 1; i<this.nPoints; i++){
-             if (pickup.data[0] != 0 && pickup.data[1] != 0 && pickup.data[2] != 0) {
+            if(doPickup){
+                var pickup = context.getImageData(this.points[i].x, this.points[i].y,1,1);
+
+                 this.points[i].col = mixColours(this.points[i].col, pickup.data);
                  //console.log(this.points[i].col);
              }
              context.fillStyle = this.points[i].col;
@@ -93,6 +95,7 @@ var Brush = function(nBristles, nPoints) {
     this.nBristles = nBristles;
     this.bristles = generateBristles(nBristles, nPoints);
     this.excluded = null;
+    this.count = 0;
     
 }
 
@@ -126,8 +129,12 @@ Brush.prototype = {
         var excluded = Math.random();
         for (var i = 0; i<this.nBristles; i++){
             if (i != this.excluded)
-                this.bristles[i].paint();
+                this.bristles[i].paint(this.count == 5);
         }
+        if(this.count >= 5)
+            this.count = 0;
+        else
+            this.count++;
     }
 }
 
@@ -250,7 +257,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(y);
             paintPickup(x,rounded, false);
         }
-        console.log('1st q', bx-ax);
+        //console.log('1st q', bx-ax);
     }
     else if (ax <= bx && ay <= by && absX< absY) { //2nd Quadrant
         for (i = 1; i < absY; i++) {
@@ -259,7 +266,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(x);
             paintPickup(rounded,y, false);
         }
-        console.log('2nd q', by-ay);
+        //console.log('2nd q', by-ay);
     }        
     else if (ax > bx && ay < by && absX <= absY) { //3rd Quadrant
         for (i = 1; i < absY; i++) {
@@ -268,7 +275,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(x);
             paintPickup(rounded,y, false);
         }
-        console.log('3rd q', by-ay);
+        //console.log('3rd q', by-ay);
     } 
     else if (ax > bx && ay < by && absX > absY) { //4th Quadrant
         for (i = 1; i < absX; i++) {
@@ -277,7 +284,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(y);
             paintPickup(x,rounded, false);
         }
-        console.log('4th q', bx-ax);
+        //console.log('4th q', bx-ax);
     }
     else if (ax > bx && ay >= by && absX >= absY) { //5th Quadrant
         for (i = 1; i < absX; i++) {
@@ -286,7 +293,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(y);
             paintPickup(x,rounded, false);
         }
-        console.log('5th q', bx-ax);
+        //console.log('5th q', bx-ax);
     }
     else if (ax > bx && ay >= by && absX <= absY) { //6th Quadrant
         for (i = 1; i < Math.abs(by-ay); i++) {
@@ -295,7 +302,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(x);
             paintPickup(rounded,y, false);
         }
-        console.log('6th q', by-ay);
+        //console.log('6th q', by-ay);
     } 
     else if (ax <= bx && ay > by && absX < absY) { //7th Quadrant
         for (i = 1; i < absY; i++) {
@@ -304,7 +311,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(x);
             paintPickup(rounded,y, false);
         }
-        console.log('7th', by-ay);
+        //console.log('7th', by-ay);
     } 
     else if (ax <= bx && ay > by && absX >=absY) { //8th Quadrant
         for (i = 1; i < absX; i++) {
@@ -313,7 +320,7 @@ function DrawLine(ax, ay, bx, by) {
             rounded = Math.round(y);
             paintPickup(x,rounded, false);
         }
-        console.log('8th q', bx-ax);
+        //console.log('8th q', bx-ax);
     }       
 }
 
@@ -371,3 +378,22 @@ function generateBristles(nBristles, nPoints) {
     return bristles;
 }
 
+function mixColours(col, imgData)
+{
+    if (imgData[3] == 0 || (imgData[0] == 255 && imgData[1] == 255 && imgData[2] == 255)){
+        return col;
+    }
+    // console.log(imgData);
+    var r = Math.floor(col/65536);
+    var g = Math.floor((col-(r*65536)) / 256);
+    var b = (col - (r*65536) - (g*256));
+    
+    if (imgData[0] == r && imgData[1] == g && imgData[2] == b)
+        return col;
+    
+    r = Math.floor((2*r + imgData[0])/3);
+    g = Math.floor((2*g + imgData[1])/3);
+    b = Math.floor((2*b + imgData[2])/3);
+    // console.log(r,g,b);
+    return "rgb("+r+","+r+","+r+")";
+}
