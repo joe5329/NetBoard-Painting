@@ -29,7 +29,7 @@ function alignPosition(x,y) {
     return point;
 }
 
-function RoundToUnit(n) {
+function RoundToUnit(n) { //floor ?
     var r = n%1;
     return n - r;
 
@@ -65,12 +65,14 @@ function setPointsOnLine(ax, ay, bx, by, nPoints, points) {
         for (i = 0; i < nPoints; i++) {
             x+=1;
             y+=my;
-            rounded = RoundToUnit(y);
+            rounded = Math.round(y);
             if (!reversed) {
                 points[i].x = x;
                 points[i].y = rounded;
             }
             else {
+                if (points[(nPoints-i)-1] == undefined)
+                    console.log('undefined',i,nPoints,(nPoints-i)-1);
                 points[(nPoints-i)-1].x = x;
                 points[(nPoints-i)-1].y = rounded;
             }
@@ -80,7 +82,7 @@ function setPointsOnLine(ax, ay, bx, by, nPoints, points) {
         for (i = 0; i < nPoints; i++) {
             x+=mx;
             y+=1;
-            rounded = RoundToUnit(x);
+            rounded = Math.round(x);
             if (!reversed) {
                 points[i].x = rounded;
                 points[i].y = y;
@@ -95,7 +97,7 @@ function setPointsOnLine(ax, ay, bx, by, nPoints, points) {
         for (i = 0; i < nPoints; i++) {
             x-=mx;
             y-=1;
-            rounded = RoundToUnit(x);
+            rounded = Math.round(x);
             if (!reversed) {
                 points[i].x = rounded;
                 points[i].y = y;
@@ -110,7 +112,7 @@ function setPointsOnLine(ax, ay, bx, by, nPoints, points) {
         for (i = 0; i < nPoints; i++) {
             x+=1;
             y+=my;
-            rounded = RoundToUnit(y);
+            rounded = Math.round(y);
             if (!reversed) {
                 points[i].x = x;
                 points[i].y = rounded;
