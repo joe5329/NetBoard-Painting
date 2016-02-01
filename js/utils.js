@@ -9,6 +9,18 @@ var BPoint = function(x, y, col) {
     this.col = col;
 }
 
+/*var Colour = function(r,b,g) {
+    if (arguments.length == 3){
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.hex = "rgb("+r+","+g+","+b+")";
+    }
+    else if (arguments.length == 1){
+        this.hex
+    }
+}*/
+
 function createArray3(d1,d2,d3) {
   var data = [d1*d2*d3];
   function get(x,y,z) { return data[x*d1*d2 + y*d1 + z];}
