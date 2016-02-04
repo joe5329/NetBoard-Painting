@@ -14,7 +14,7 @@ var Bristle = function(nPoints, number, nB) {
     
     this.nPoints = nPoints;
     this.points = generatePoints(nPoints, options.brushRGB);
-    this.paintFactor = 4*Math.pow((number/nB)-0.5,2) + 1;
+    this.paintFactor = 4*Math.pow((number/nB)-0.5,2) + 0.6;
     
 }
 
@@ -95,10 +95,10 @@ Brush.prototype = {
             this.bristles[i].setInitDirection(point, i, this.nBristles);
         }
         if (Math.random() >= 0.5){
-            this.excluded = Math.round(this.nBristles * 1-(Math.pow(Math.random(), 3)));
+            this.excluded = Math.round(this.nBristles * (1-(Math.pow(Math.random(), 4))));
         }
         else {
-            this.excluded = Math.round(this.nBristles * Math.pow(Math.random(), 3));                                   
+            this.excluded = Math.round(this.nBristles * Math.pow(Math.random(), 4));                                   
         }
     },
     
@@ -133,8 +133,8 @@ function initialisePainting() {
     canvas = document.getElementById("myCanvas");
     context = canvas.getContext("2d");
     
-    context.fillStyle = "blue";
-    context.fillRect(100, 200, 900, 40);
+   // context.fillStyle = "blue";
+   //3 context.fillRect(100, 200, 50, 500);
 
     options = {
         nBristles:20,
@@ -147,6 +147,12 @@ function initialisePainting() {
             setRGB();
             brush.setColour(options.colour);
             //context.fillStyle = value;
+        },
+        
+        dryPaint: function(){
+            dry();
+            setRGB();
+            brush.setColour(options.colour);
         }
     }
     
@@ -351,6 +357,10 @@ function paintPickup(x,y, setLastDrawn) {
         lastDrawn.x = x;
         lastDrawn.y = y;
     }
+}
+
+function dry(){
+    
 }
     
 function generatePoints(n, c) {
