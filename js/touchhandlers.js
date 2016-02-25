@@ -5,3 +5,5 @@ function initTouchMoveCanvas() {
   document.addEventListener("touchend", EndTouchMove, false);
   document.addEventListener("touchstart", BeginTouch, false);
 }
+
+initTouchMoveCanvas();

@@ -1,4 +1,4 @@
-var canvas, context, backcanvas, backcontext, lineWidth, options, pickup, pickupctx, brush;
+var canvas, context, lineWidth, options, pickup, pickupctx, brush;
 var firstMove = true;
 var secondMove = false;
 firstTouchPos = new Point(null, null);
@@ -8,7 +8,6 @@ var drawing = false;
 var drawLine = true;
 
 var lastDrawn = new Point(0,0);
-
 
 // Creates a bristle composed of nPoints points what each represent an area of the bristle that holds colour.
 var Bristle = function(nPoints, number, nB) {
@@ -43,7 +42,7 @@ Bristle.prototype = {
             tempPointA = this.points[i];
             this.points[i].x = Math.round((this.points[i].x + this.points[i-1].x + (2*tempPointB.x))/4);
             var dist =this.points[i].x - this.points[i-1].x;
-            if (dist > 2)
+            /*if (dist > 2)
                 this.points[i].x += Math.round(Math.sqrt(dist));
             else if (dist < -2)
                 this.points[i].x -= Math.round(Math.sqrt(Math.abs(dist)));
@@ -53,23 +52,37 @@ Bristle.prototype = {
             if (dist > 1)
                 this.points[i].y += Math.round(Math.sqrt(dist));
             else if (dist < -1)
-                //this.points[i].y -= dist+3;
-                //this.points[i].y -= dist + 1;
-                this.points[i].y -= Math.round(Math.sqrt(Math.abs(dist)));
+                this.points[i].y -= Math.round(Math.sqrt(Math.abs(dist)));*/
+            if (dist > 2)
+                this.points[i].x += Math.round(dist/4);
+            else if (dist < -2)
+                this.points[i].x -= Math.round(-dist/4);
+            
+            this.points[i].y = Math.round((this.points[i].y + this.points[i-1].y + (2*tempPointB.y))/4);
+            dist =this.points[i].y - this.points[i-1].y;
+            if (dist > 3)
+                this.points[i].y += Math.round(dist/4);
+            else if (dist < -3)
+                this.points[i].y -= Math.round(-dist/4);
             tempPointB=tempPointA;
         }
     },
 
     paint: function(doPickup){
-        for(var i = 0; i<this.nPoints; i++){
+        for(var i = 0; i<this.nPoints-1; i++){
             if(doPickup){
                 var pickup = context.getImageData(this.points[i].x, this.points[i].y,1,1);
 
                  this.points[i].col = mixColours(this.points[i].col, pickup.data, this.paintFactor);
                  //console.log(this.points[i].col);
              }
-             context.fillStyle = this.points[i].col;
-             context.fillRect(this.points[i].x, this.points[i].y, 1, 1);
+             //context.fillStyle = this.points[i].col;
+             //context.fillRect(this.points[i].x, this.points[i].y, 1, 1);
+            context.strokeStyle = this.points[i].col;
+            context.beginPath();
+            context.moveTo(this.points[i].x, this.points[i].y);
+            context.moveTo(this.points[i+1].x, this.points[i+1].y);
+            context.stroke();
 
          }
     }
@@ -110,15 +123,6 @@ Brush.prototype = {
         
     },
     
-    reset: function(x,y){
-        for (var i = 0; i<this.nBristles; i++) {
-            for (var j = 0; j<this.bristles[i].nPoints; j++){
-                this.bristles[i].points[j].x = x+i-Math.floor(this.nBristles/2);
-                this.bristles[i].points[j].y = y;
-            }
-        }
-    },
-    
     paint: function(){
         var excluded = Math.random();
         for (var i = 0; i<this.nBristles; i++){
@@ -142,22 +146,13 @@ function initialisePainting() {
                
     canvas = document.getElementById("myCanvas");
     context = canvas.getContext("2d");
-
-    backcanvas = document.getElementById("myCanvas2");
-    backcontext = backcanvas.getContext("2d");
     
-    $("#brushWidth").slider({
-        min:2,
-        max:70,
-        value:20,
-        slide: function(event,ui) {
-            options.nBristles = ui.value
-            brush = new Brush(ui.value, options.nPoints);
-        }
-    });
+   // context.fillStyle = "blue";
+   //3 context.fillRect(100, 200, 50, 500);
+
     options = {
         nBristles:20,
-        nPoints:20,
+        nPoints:5,
         colour:"#ff0000",
         paintOnBrush:200,
         brushRGB:"rgb(255,00,00)",
@@ -172,11 +167,6 @@ function initialisePainting() {
             dry();
             setRGB();
             brush.setColour(options.colour);
-        },
-        
-        saveImage: function(){
-            dry();
-            Canvas2Image.saveAsPNG(backcanvas, 1080, 1720);
         }
     }
     
@@ -187,18 +177,13 @@ function initialisePainting() {
         //brush.setColour(value);
     });
     gui.add(options, 'nBristles', 1, 50).step(1).onFinishChange(function(value){
-        brush = new Brush(value, options.nPoints);
-        console.log(value, options.nPoints);
+        brush = new Brush(value, value);
     });
     gui.add(options, 'nPoints', 1, 50).step(1).onFinishChange(function(value){
-        brush = new Brush(options.nBristles, value);
-        console.log(options.nBristles, value);
+        brush = new Brush(value, value);
     });
     //gui.add(options, "paintOnBrush", 0, 1000);
     gui.add(options, "cleanBrush");
-    gui.add(options, 'dryPaint');
-    gui.add(options, 'saveImage');
-    
 
     pickup = document.createElement('canvas');  // Don't think I need this ?
     pickup.width = 200;
@@ -208,6 +193,8 @@ function initialisePainting() {
     setRGB();
 
     brush = new Brush(options.nBristles, options.nPoints);
+    
+    context.lineWidth = 1;
     
 }
 
@@ -222,9 +209,6 @@ function BeginTouch(event) {
     secondMove = false;
     
     //paintPoint(v.x,v.y);
-    lastDrawn.x = 0;
-    lastDrawn.y=0;
-    brush.reset(v.x,v.y);
 }    
 
 function TouchMove(event) {
@@ -232,7 +216,7 @@ function TouchMove(event) {
     var x,y,z;
     var v = alignPosition(event.touches[0].clientX, event.touches[0].clientY);
     
-    /*if (secondMove){
+    if (secondMove){
         brush.setInitDirection(new Point(v.x, v.y));
         secondMove = false;
     }
@@ -240,7 +224,7 @@ function TouchMove(event) {
         secondMove = true;
         firstMove = false;
     }
-    else*/
+    else
         paintPickup(v.x,v.y, false);
     
     //if (drawLine && lastDrawn.x != undefined && lastDrawn.y != undefined) {
@@ -392,8 +376,7 @@ function paintPickup(x,y, setLastDrawn) {
 }
 
 function dry(){
-    backcontext.drawImage(canvas, 0, 0);
-    context.clearRect(0,0,1080,1920);
+    
 }
     
 function generatePoints(n, c) {
@@ -408,7 +391,7 @@ function generateBristles(nBristles, nPoints) {
     var bristles = [];
     var mid = Math.floor((nBristles-1)/2);
     for (var i = 0; i<nBristles ; i++){
-        bristles.push(new Bristle(nPoints + Math.round(nPoints/nBristles * (Math.round(nBristles/4) - Math.abs(Math.round((nBristles/4 - i/4))))), i, nBristles));
+        bristles.push(new Bristle(nPoints + Math.round(nPoints/4) - Math.abs(Math.round((nBristles/4 - i/2))), i, nBristles));
 
     }
     return bristles;
@@ -436,5 +419,3 @@ function mixColours(col, imgData, factor)
     var colour = 65536*r + 256*g + b;
     return '#' + ('00000' + (colour | 0).toString(16)).substr(-6); 
 }
-
-initialisePainting();
